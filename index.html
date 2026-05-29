@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hermes Voice Chat</title>
+  <style>
+    body {font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; padding:1rem;}
+    #log {border:1px solid #ccc; height:300px; overflow:auto; padding:0.5rem; margin-bottom:1rem;}
+    button {padding:0.5rem 1rem;}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@openai/whisper-web@latest"></script>
+</head>
+<body>
+  <h2>Hermes Voice Chat</h2>
+  <!-- Telegram login widget -->
+  <script async src="https://telegram.org/js/telegram-widget.js?7"
+    data-telegram-login="Brisk_Hermes_bot"
+    data-size="large"
+    data-auth-url="https://example.com/telegram-auth"  <!-- placeholder -->
+    data-request-access="write"></script>
+
+  <div id="log"></div>
+  <button id="startBtn">Start Recording</button>
+  <button id="stopBtn" disabled>Stop</button>
+
+  <script>
+    const log = document.getElementById('log');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    let mediaRecorder;
+    let audioChunks = [];
+
+    function append(msg){ log.innerHTML += `<div>${msg}</div>`; log.scrollTop = log.scrollHeight; }
+
+    startBtn.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      mediaRecorder = new MediaRecoder(stream);
+      mediaRecorder.ondatauavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, {type:'audio/webm'});
+        audioChunks = [];
+        const form = new FormData();
+        form.append('file', blob, 'voice.webm');
+        const resp = await fetch('/voice-chat', {method:'POST', body: form});
+        const data = await resp.json();
+        append('<b>Hermes:</b> '+data.text);
+        // Play TTS response
+        const audio = new Audio(data.audio_url);
+        audio.play();
+      };
+      mediaRecorder.start();
+      startBtn.disabled = true; stopBtn.disabled = false;
+      append('<i>Recording...</i>');
+    };
+    stopBtn.onclick = () => {
+      mediaRecorder.stop();
+      startBtn.disabled = false; stopBtn.disabled = true;
+    };
+  </script>
+</body>
+</html>
